@@ -1,0 +1,14 @@
+# macOS
+.DS_Store
+
+# IDE / Editor
+.claude/
+
+# Dependencies
+node_modules/
+
+# Secrets & Environment
+.env
+.env.local
+*.pem
+*.key

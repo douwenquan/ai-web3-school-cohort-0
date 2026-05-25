@@ -14,7 +14,7 @@
 
 基于你的背景（AI 有基础、Web3 需加强、开发能力强），建议按以下顺序推进：
 
-### 第一阶段：补齐 Web3 基础（约 2 周）
+### 第一阶段：补齐 Web3 基础（约 2 周） ✅ 已完成 (2026-05-25)
 
 优先阅读：
 1. [Network](https://aiweb3.school/zh/handbook/web3/network/) - 区块、共识、L2、RPC
