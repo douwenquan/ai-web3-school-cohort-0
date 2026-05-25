@@ -14,7 +14,7 @@ node_modules/
 *.key
 
 # Doc
-doc/
+docs/
 
 # Build output
 dist/
