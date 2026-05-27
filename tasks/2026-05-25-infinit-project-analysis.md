@@ -215,5 +215,4 @@ INFINIT 展示了 AI × Web3 从概念到产品的完整路径：
 ---
 
 **任务日期**: 2026-05-25  
-**WCB 任务 ID**: cmp9wlt0p0s4nmw01ypoa45tk  
 **相关章节**: AI × Web3 Bridge → Agent Workflow, DeFi, Wallet/Permission, Security
