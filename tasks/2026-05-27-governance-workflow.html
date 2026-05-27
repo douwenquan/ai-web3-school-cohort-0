@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI × Web3 最小交叉流程图 — 治理助手</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0f172a;
+    color: #e2e8f0;
+    font-family: 'Inter', -apple-system, sans-serif;
+    display: flex;
+    justify-content: center;
+    padding: 40px 20px;
+  }
+  .container { max-width: 900px; width: 100%; }
+
+  /* Header */
+  .header { text-align: center; margin-bottom: 40px; }
+  .header h1 {
+    font-size: 28px; font-weight: 700;
+    background: linear-gradient(135deg, #60a5fa, #a78bfa);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .header p { color: #94a3b8; font-size: 14px; margin-top: 8px; }
+  .header .badge {
+    display: inline-block; padding: 4px 14px; border-radius: 999px;
+    background: rgba(96, 165, 250, 0.15); color: #60a5fa;
+    font-size: 12px; font-weight: 600; margin-top: 12px;
+  }
+
+  /* Zones */
+  .flow { position: relative; display: flex; flex-direction: column; gap: 0; }
+  .zone {
+    position: relative; border-radius: 16px; padding: 24px 32px;
+    margin-bottom: 0;
+  }
+  .zone:last-child { margin-bottom: 0; }
+
+  .zone-label {
+    position: absolute; top: -12px; left: 32px;
+    padding: 2px 14px; border-radius: 999px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .zone-ai {
+    background: rgba(96, 165, 250, 0.06);
+    border: 1px solid rgba(96, 165, 250, 0.2);
+    border-top-left-radius: 16px; border-top-right-radius: 16px;
+  }
+  .zone-ai .zone-label { background: rgba(96, 165, 250, 0.2); color: #60a5fa; }
+
+  .zone-human {
+    background: rgba(251, 191, 36, 0.06);
+    border: 1px solid rgba(251, 191, 36, 0.2);
+  }
+  .zone-human .zone-label { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+
+  .zone-chain {
+    background: rgba(52, 211, 153, 0.06);
+    border: 1px solid rgba(52, 211, 153, 0.2);
+    border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;
+  }
+  .zone-chain .zone-label { background: rgba(52, 211, 153, 0.2); color: #34d399; }
+
+  /* Nodes */
+  .node-list { display: flex; flex-direction: column; gap: 8px; }
+  .node {
+    display: flex; align-items: flex-start; gap: 16px;
+    padding: 14px 18px; border-radius: 10px;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(148, 163, 184, 0.1);
+    transition: border-color 0.2s;
+  }
+  .node:hover { border-color: rgba(148, 163, 184, 0.3); }
+
+  .node-number {
+    flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700;
+    background: rgba(148, 163, 184, 0.12); color: #94a3b8;
+  }
+  .zone-ai .node-number { background: rgba(96, 165, 250, 0.15); color: #60a5fa; }
+  .zone-human .node-number { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+  .zone-chain .node-number { background: rgba(52, 211, 153, 0.15); color: #34d399; }
+
+  .node-content { flex: 1; }
+  .node-title {
+    font-size: 14px; font-weight: 600;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .node-desc { font-size: 12px; color: #94a3b8; margin-top: 3px; line-height: 1.5; }
+
+  .tag {
+    display: inline-block; padding: 1px 8px; border-radius: 4px;
+    font-size: 10px; font-weight: 600;
+  }
+  .tag-ai { background: rgba(96, 165, 250, 0.15); color: #60a5fa; }
+  .tag-human { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+  .tag-sign { background: rgba(52, 211, 153, 0.15); color: #34d399; }
+  .tag-risk { background: rgba(251, 113, 133, 0.15); color: #fb7185; }
+  .tag-warn { background: rgba(251, 146, 60, 0.15); color: #fb923c; }
+
+  .risk-items { margin-top: 4px; font-size: 11px; color: #fb7185; }
+
+  /* Arrow connector */
+  .arrow-down {
+    text-align: center; color: #475569; font-size: 14px;
+    padding: 6px 0; line-height: 1;
+  }
+  .arrow-down.zone-divider { padding: 10px 0; font-size: 18px; color: #64748b; }
+
+  /* Fork */
+  .fork { display: flex; gap: 16px; margin-top: 0; }
+  .fork .node { flex: 1; }
+
+  /* Divider line between zones */
+  .zone-divider-line {
+    height: 2px; margin: 0;
+    background: linear-gradient(90deg, transparent, #475569, transparent);
+  }
+
+  /* Summary Cards */
+  .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 36px; }
+  .card {
+    background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.12);
+    border-radius: 12px; padding: 18px;
+  }
+  .card-title {
+    font-size: 12px; font-weight: 600; color: #94a3b8;
+    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-dot {
+    width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+  }
+  .card-dot.blue { background: #60a5fa; }
+  .card-dot.yellow { background: #fbbf24; }
+  .card-dot.green { background: #34d399; }
+
+  .card ul { list-style: none; font-size: 12px; line-height: 1.8; color: #cbd5e1; }
+  .card ul li::before { content: "• "; color: #475569; }
+
+  .card .highlight {
+    display: inline-block; padding: 1px 6px; border-radius: 3px;
+    font-size: 10px; font-weight: 600; margin-top: 8px;
+  }
+  .highlight-blue { background: rgba(96, 165, 250, 0.12); color: #60a5fa; }
+  .highlight-yellow { background: rgba(251, 191, 36, 0.12); color: #fbbf24; }
+  .highlight-green { background: rgba(52, 211, 153, 0.12); color: #34d399; }
+
+  @media (max-width: 640px) {
+    .summary { grid-template-columns: 1fr; }
+    .fork { flex-direction: column; }
+    .zone { padding: 20px 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="header">
+  <h1>AI × Web3 最小交叉流程图</h1>
+  <p>治理助手场景 — DAO 提案摘要 → 人工审核 → 链上投票 → 公开记录</p>
+  <div class="badge">📋 示例 ③ 治理助手</div>
+</div>
+
+<div class="flow">
+
+  <!-- ──────── 发起 ──────── -->
+  <div style="text-align:center;padding:16px 0 12px">
+    <div style="display:inline-block;padding:10px 28px;border-radius:12px;background:rgba(251,146,60,0.1);border:1px solid rgba(251,146,60,0.25)">
+      <div style="font-size:15px;font-weight:600;color:#fb923c">👤 DAO 成员 ① 发起任务</div>
+      <div style="font-size:12px;color:#94a3b8;margin-top:2px">"帮我分析一下这个提案"</div>
+    </div>
+  </div>
+  <div class="arrow-down zone-divider">▼ AI 边界 ▼</div>
+
+  <!-- ──────── AI 层 ──────── -->
+  <div class="zone zone-ai">
+    <div class="zone-label">🤖 AI 层 — 执行者</div>
+    <div class="node-list">
+      <div class="node">
+        <div class="node-number">①</div>
+        <div class="node-content">
+          <div class="node-title">
+            获取提案内容
+            <span class="tag tag-ai">AI 执行</span>
+            <span class="tag tag-risk">链下依赖</span>
+          </div>
+          <div class="node-desc">从 Discourse / Snapshot / 链上拉取原始提案文本</div>
+          <div class="risk-items">⚠️ 风险：链下数据源不可用、提案版本不一致</div>
+        </div>
+      </div>
+
+      <div class="arrow-down">↓</div>
+
+      <div class="node">
+        <div class="node-number">②</div>
+        <div class="node-content">
+          <div class="node-title">
+            提案摘要生成
+            <span class="tag tag-ai">AI 执行</span>
+            <span class="tag tag-risk">信息偏差</span>
+          </div>
+          <div class="node-desc">整理：目标 / 背景 / 预算 / 执行范围 / 风险评估 / 待决选项 / 资金来源</div>
+          <div class="risk-items">⚠️ 风险：LLM 遗漏关键细节、过度简化复杂条款</div>
+        </div>
+      </div>
+
+      <div class="arrow-down">↓</div>
+
+      <div class="node">
+        <div class="node-number">③</div>
+        <div class="node-content">
+          <div class="node-title">
+            链上数据交叉验证
+            <span class="tag tag-ai">AI 执行</span>
+            <span class="tag tag-warn">需查询</span>
+          </div>
+          <div class="node-desc">查询：金库余额 / 提案人历史提案与投票记录 / 关联合约状态 / 预算合理性</div>
+          <div class="risk-items">⚠️ 风险：RPC 数据延迟、提案人链上行为解读偏差</div>
+        </div>
+      </div>
+
+      <div class="arrow-down">↓</div>
+
+      <div class="node">
+        <div class="node-number">④</div>
+        <div class="node-content">
+          <div class="node-title">
+            生成带引用的报告
+            <span class="tag tag-ai">AI 执行</span>
+          </div>
+          <div class="node-desc">输出完整分析报告，每项结论附带链上链接 + 提案原文引用</div>
+          <div class="risk-items">⚠️ 风险：虚假引用、Citation 链接失效</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-down zone-divider">▼ 人工边界 ▼</div>
+
+  <!-- ──────── 人层 ──────── -->
+  <div class="zone zone-human">
+    <div class="zone-label">👤 人层 — 审核 + 决策者</div>
+    <div class="node-list">
+      <div class="node">
+        <div class="node-number">⑤</div>
+        <div class="node-content">
+          <div class="node-title">
+            人工审核摘要
+            <span class="tag tag-human">人执行</span>
+            <span class="tag tag-sign">⛔ 必须人工确认</span>
+          </div>
+          <div class="node-desc">阅读 AI 摘要，对比原始提案，检查数据来源和风险标记是否准确</div>
+          <div class="risk-items">⚠️ 风险：成员不仔细审阅、过度信任 AI 输出</div>
+        </div>
+      </div>
+
+      <div class="arrow-down">↓</div>
+
+      <div class="fork">
+        <div class="node" style="flex:1">
+          <div class="node-number">⑥a</div>
+          <div class="node-content">
+            <div class="node-title">
+              决定投票（赞成/反对）
+              <span class="tag tag-human">人决策</span>
+              <span class="tag tag-sign">→ 需链上签名</span>
+            </div>
+            <div class="node-desc">基于审核结果做出投票决定</div>
+            <div class="risk-items">⚠️ 风险：误判提案影响</div>
+          </div>
+        </div>
+        <div class="node" style="flex:1">
+          <div class="node-number">⑥b</div>
+          <div class="node-content">
+            <div class="node-title">
+              要求补充 / 提出疑问
+              <span class="tag tag-human">人反馈</span>
+            </div>
+            <div class="node-desc">返回 AI 要求补充信息，或社区讨论中提出疑问</div>
+            <div class="risk-items">— 不需要链上操作</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-down zone-divider">▼ 链上边界 ▼</div>
+
+  <!-- ──────── 链上层 ──────── -->
+  <div class="zone zone-chain">
+    <div class="zone-label">⛓️ 链上层 — 执行 + 记录</div>
+    <div class="node-list">
+      <div class="node">
+        <div class="node-number">⑦</div>
+        <div class="node-content">
+          <div class="node-title">
+            链上投票签名
+            <span class="tag tag-sign">🔑 需要钱包签名 & Gas</span>
+            <span class="tag tag-risk">不可逆</span>
+          </div>
+          <div class="node-desc">连接钱包 → 确认 Gas → 验证投票提案地址 → 签名并广播交易</div>
+          <div class="risk-items">⚠️ 风险：签名的不是预期提案、Gas 不足、签名被钓鱼</div>
+        </div>
+      </div>
+
+      <div class="arrow-down">↓</div>
+
+      <div class="node">
+        <div class="node-number">⑧</div>
+        <div class="node-content">
+          <div class="node-title">
+            验证交易记录
+            <span class="tag tag-human">人验证</span>
+          </div>
+          <div class="node-desc">通过 Snapshot / 区块浏览器确认投票已成功上链，生成验证链接</div>
+          <div class="risk-items">⚠️ 风险：浏览器数据同步延迟</div>
+        </div>
+      </div>
+
+      <div class="arrow-down">↓</div>
+
+      <div class="node">
+        <div class="node-number">⑨</div>
+        <div class="node-content">
+          <div class="node-title">
+            结果归档 & 通知
+            <span class="tag tag-ai">AI 执行</span>
+          </div>
+          <div class="node-desc">记录投票结果 / 更新上下文 / 通知社区 / 写入 Tool Log</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ──────── Summary ──────── -->
+<div class="summary">
+  <div class="card">
+    <div class="card-title"><span class="card-dot blue"></span>角色分工</div>
+    <ul>
+      <li>👤 DAO 成员 — 发起任务、审核、验证</li>
+      <li>🤖 AI / Agent — 抓取、摘要、交叉验证、归档</li>
+      <li>⛓️ 区块链 — 投票执行、永久记录</li>
+    </ul>
+    <span class="highlight highlight-blue">节点 ①~④, ⑨ → AI 执行</span>
+    <span class="highlight highlight-yellow">节点 ⑤, ⑧ → 人执行</span>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="card-dot yellow"></span>关键节点标记</div>
+    <ul>
+      <li>🔑 钱包签名：节点 ⑦ — 投票交易</li>
+      <li>⛔ 必须人确认：节点 ⑤ — 审核摘要</li>
+      <li>📋 验证结果：节点 ⑧ — Explorer 查询</li>
+      <li>🤖 需查询链上：节点 ③ — 提案人历史</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="card-dot green"></span>风险摘要</div>
+    <ul>
+      <li>🔴 链下依赖 — 数据源不可用</li>
+      <li>🔴 信息偏差 — LLM 遗漏或过度简化</li>
+      <li>🔴 虚假引用 — Citation 不准确</li>
+      <li>🔴 签名安全 — 误签非预期提案</li>
+      <li>🟡 用户盲信 — 不审阅直接签名</li>
+    </ul>
+  </div>
+</div>
+
+<div style="text-align:center;margin-top:32px;padding:16px;border-radius:12px;background:rgba(148,163,184,0.05);border:1px solid rgba(148,163,184,0.1)">
+  <div style="font-size:12px;color:#64748b">
+    AI × Web3 School · Week 1 · AI × Web3 最小交叉流程图 · 2026-05-27
+  </div>
+</div>
+
+</div>
+</body>
+</html>
