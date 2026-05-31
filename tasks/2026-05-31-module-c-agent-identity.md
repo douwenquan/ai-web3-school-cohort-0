@@ -405,8 +405,6 @@ POST /api/v1/x402/pay
 
 ### 协作对象与失败点
 
-> 对照 Module C 任务要求："写清 Agent 的 identity、capability、输入输出、**协作对象与失败点**"
-
 #### 协作对象图谱
 
 ```
