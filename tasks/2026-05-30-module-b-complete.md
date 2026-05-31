@@ -199,14 +199,273 @@ Pact 终止时：
 
 ---
 
-### 对比 1：x402 vs MPP — 支付层
+### 协议详解
 
-**相同点：**
-- 都定义 Agent 对服务的自动化支付流程
-- 都是 HTTP 协议层交互，无需人类手动操作
-- 都支持微支付场景
+---
 
-**不同点：**
+#### 1. x402 — 开放支付标准
+
+**概述**
+
+x402 是一个以 HTTP `402 Payment Required` 状态码为核心的开放支付标准（Apache-2.0 许可证），允许服务端要求客户端在返回数据前先完成链上支付。整个过程无需账户、无需登录、无需手动付款——纯程序化交互。
+
+**核心机制**
+
+```
+客户端（Agent）                    服务端
+     │                               │
+     │  ① 请求资源（GET /api）        │
+     │  ──────────────────────────►   │
+     │                               │
+     │  ② 402 Payment Required       │
+     │     PAYMENT-REQUIRED header    │
+     │     {                         │
+     │       scheme: "exact",        │
+     │       price: "0.001",         │
+     │       network: "eip155:84532",│
+     │       payTo: "0xSeller..."    │
+     │     }                         │
+     │  ◄──────────────────────────  │
+     │                               │
+     │  ③ 客户端链上付款              │
+     │     → 交易上链得 tx hash       │
+     │                               │
+     │  ④ 重试请求 + PAYMENT-SIGNATURE│
+     │     { tx_hash, amount, scheme }│
+     │  ──────────────────────────►   │
+     │                               │
+     │  ⑤ 服务端（或 Facilitator）验证│
+     │     链上交易确认 → 返回数据     │
+     │  ◄──────────────────────────  │
+```
+
+**三个 HTTP Header：**
+
+| Header | 方向 | 内容 | 作用 |
+|--------|------|------|------|
+| `PAYMENT-REQUIRED` | 服务端 → 客户端 | Base64 JSON（金额、网络、收款地址） | 告知付款要求 |
+| `PAYMENT-SIGNATURE` | 客户端 → 服务端 | Base64 JSON（tx hash、金额、scheme） | 付款凭证 |
+| `PAYMENT-RESPONSE` | 服务端 → 客户端 | Base64 JSON（结算结果） | 确认完成 |
+
+**关键特性：**
+
+| 特性 | 说明 |
+|------|------|
+| **无费用** | 协议本身零费用，仅有链上 Gas |
+| **微支付** | 支持小额支付，EVM 批量结算解决高 Gas 问题 |
+| **无账户** | 不依赖账户系统、会话管理、API Key 认证 |
+| **Facilitator** | 可选验证服务，协助服务端确认链上交易状态 |
+| **批量结算** | Batch Settlement scheme，链下聚合后单笔上链结算 |
+
+**适用场景：**
+- API 按请求收费（每次调用付几分钱）
+- AI Agent 自主为 API 访问付费
+- 数字内容付费墙
+- 微服务间按用量结算
+
+**参考文档：**
+- x402 官方文档：https://docs.x402.org/introduction
+- x402 llms.txt（完整文档索引）：https://docs.x402.org/llms.txt
+- x402 Seller Quickstart：https://docs.x402.org/getting-started/quickstart-for-sellers
+- x402 Buyer Quickstart：https://docs.x402.org/getting-started/quickstart-for-buyers
+- x402 GitHub 示例：https://github.com/x402-foundation/x402/tree/main/examples
+- x402 Batch Settlement：https://docs.x402.org/schemes/batch-settlement
+
+---
+
+#### 2. MPP — Machine Payments Protocol（Stripe 机器支付协议）
+
+**概述**
+
+MPP 由 Stripe 和 Tempo 联合制定，是面向 AI Agent 的自动化支付标准。目标是让 Agent 能像人类一样用 Stripe 付费，支持稳定币和传统法币。Stripe 商家只需几行代码即可接入。
+
+**核心机制**
+
+```
+Agent → 服务端请求 → 服务端返回支付请求 → Agent 授权 → 支付完成 → 资源交付
+                              ↕
+                         Stripe 处理：
+                         PaymentIntents API
+                         税费、防欺诈、退款、对账
+```
+
+**与 Stripe 生态的集成：**
+
+MPP 的支付走 Stripe 现有的基础设施：
+- 资金结算到商家已有的 Stripe 账户余额
+- 支持税费计算、欺诈保护、退款、对账导出
+- 在 Stripe Dashboard 中与普通交易无区别
+
+**支付方式：**
+
+| 方式 | 说明 | 适用场景 |
+|------|------|---------|
+| **稳定币** | 通过 Tempo 网络结算 | Web3 原生 Agent |
+| **法币（信用卡）** | Shared Payment Tokens | 传统 SaaS |
+| **法币（BNPL）** | Buy Now Pay Later | 消费场景 |
+
+**已上线案例：**
+
+| 公司 | 用途 |
+|------|------|
+| **Browserbase** | Agent 按会话付费使用 Headless 浏览器 |
+| **PostalForm** | Agent 付费打印和寄送实体信件 |
+| **Prospect Butcher Co.** | Agent 订购三明治外卖（纽约市） |
+| **Stripe Climate** | Agent 程序化贡献碳减排 |
+
+**x402 vs MPP 定位差异：**
+
+| 维度 | x402 | MPP |
+|------|------|-----|
+| **标准化** | 开放标准（Apache-2.0），中立无费用 | Stripe + Tempo，依赖 Stripe 结算 |
+| **支付方式** | Crypto 原生（稳定币，EVM 链上交易） | 稳定币 **+** 法币（信用卡、BNPL） |
+| **适用场景** | 纯 crypto 生态 | 传统 SaaS + crypto |
+
+两者不互斥——x402 文档中明确 Stripe 也支持 x402。
+
+**参考文档：**
+- MPP 官方文档（Stripe）：https://docs.stripe.com/payments/machine
+- MPP 介绍博客：https://stripe.com/blog/machine-payments-protocol
+- Stripe Agentic Commerce Suite：https://stripe.com/blog/agentic-commerce-suite
+- Stripe MCP 集成：https://docs.stripe.com/mcp
+- Agentic Commerce Protocol（ACP）：https://www.agenticcommerce.dev/
+
+---
+
+#### 3. ERC-8004 — Trustless Agents（无信任 Agent 身份与信誉标准）
+
+**概述**
+
+ERC-8004 解决 Agent 的 **身份、发现和信任** 问题——当你想找一个 Agent 帮你做事，你怎么知道它是谁、能不能信？它定义了三层可插拔的链上注册表，部署为每链单例合约。
+
+**三层注册表架构：**
+
+##### 身份注册表（Identity Registry）
+
+- Agent 注册为 **ERC-721 NFT**，具有唯一的 `agentId`
+- 全局 ID 格式：`{namespace}:{chainId}:{identityRegistry}/{agentId}`
+- Agent URI 指向注册文件（JSON），包含：
+
+```json
+{
+  "name": "myAgentName",
+  "description": "Agent 做什么的",
+  "services": [
+    { "name": "web", "endpoint": "https://web.agentxyz.com/" },
+    { "name": "MCP", "endpoint": "https://mcp.agent.eth/" },
+    { "name": "A2A", "endpoint": "https://agent.example/.well-known/agent-card.json" },
+    { "name": "x402", "x402Support": false }
+  ],
+  "supportedTrust": [ "reputation", "crypto-economic", "tee-attestation" ]
+}
+```
+
+- 端点域名验证（可选）：服务端在 `/.well-known/agent-registration.json` 中声明 NFT ID 来证明域所有权
+- `agentWallet` 元数据通过 EIP-712 签名或 ERC-1271 智能合约钱包验证后设置，转让时清除
+
+##### 信誉注册表（Reputation Registry）
+
+- 链上声誉反馈，格式为（`value`, `valueDecimals`）数值对：
+
+| tag1 | 含义 | 数值表示 |
+|------|------|---------|
+| `starred` | 质量评分 | 87/100 → `value=87, decimals=0` |
+| `reachable` | 端点可达 | true → `value=1, decimals=0` |
+| `uptime` | 可用率 | 99.77% → `value=9977, decimals=2` |
+| `revenues` | 累计收入 | $560 → `value=560, decimals=0` |
+
+- 提交者不能是 Agent 的 Owner/Operator——防自刷
+- 链上聚合查询需要提供 `clientAddresses` 过滤——防女巫
+- 复杂信誉计算在链下完成
+
+##### 验证注册表（Validation Registry）
+
+- 可插拔验证器接口，Agent 可申请指定验证器验证自己
+- 支持多种验证方式：
+
+| 验证方式 | 原理 | 适用场景 |
+|----------|------|---------|
+| **质押重执行** | 验证器质押后重放 Agent 的执行结果 | 确定性任务 |
+| **zkML** | 零知识证明验证 ML 推理结果 | AI Agent |
+| **TEE 可信执行环境** | 硬件级隔离验证 | 敏感数据场景 |
+| **人工裁判** | 链下专家评审 | 开放式创作任务 |
+
+**信任层级按风险自动匹配：** 小额任务使用声誉评分即可，大额资金操作需要质押验证或 TEE 证明。
+
+**参考文档：**
+- ERC-8004 提案（EIP）：https://eips.ethereum.org/EIPS/eip-8004
+- ERC-8004 讨论（Ethereum Magicians）：https://ethereum-magicians.org/t/erc-8004-trustless-agents/25098
+- 依赖性：EIP-155（链 ID）、EIP-712（结构化签名）、EIP-721（NFT）、EIP-1271（合约钱包验证）
+
+---
+
+#### 4. ERC-8183 — Agentic Commerce（Agent 商业托管仲裁协议）
+
+**概述**
+
+ERC-8183 定义了 Agent 与 Client 之间的 **任务托管（Escrow）仲裁标准**——Client 锁资金、Provider 干活、Evaluator 验收，资金在合约里托管，只有 Evaluator 能放行。
+
+**状态机：**
+
+```
+          ┌───────────────────────────────────────┐
+          │                                        │
+     ┌────▼────┐   fund()   ┌──────────┐  submit() ┌───────────┐
+     │  Open   │ ────────►  │ Funded   │ ────────► │ Submitted │
+     └────┬────┘            └────┬─────┘           └─────┬─────┘
+          │                      │                       │
+          │ reject()             │ reject() / claimRefund│
+          │                      ▼                       │
+          │               ┌────────────┐                 │
+          │               │  Rejected  │                 │
+          │               │ (or Expired)│                │
+          │               └────────────┘                 │
+          │                                              │
+          │                     complete() / reject()    │
+          │                     ┌────────────┐           │
+          └────────────────────►│ Completed  │           │
+                                │ (or Rejected/Expired)  │
+                                └────────────┘           │
+```
+
+**三种角色：**
+
+| 角色 | 能做什么 | 说明 |
+|------|---------|------|
+| **Client** | 创建任务、设置预算、锁资金、拒绝（Open 阶段） | 付钱的人 |
+| **Provider** | 提交报价、执行并提交工作结果 | 干活的人（Agent） |
+| **Evaluator** | 唯一有权验收（complete）或拒绝（Submit 阶段后） | 裁判。可以是 Client 自己 |
+
+**核心函数：**
+
+| 函数 | 调用方 | 触发状态变更 | 作用 |
+|------|--------|-------------|------|
+| `createJob` | Client | Open | 创建任务，指定 Provider、Evaluator、过期时间 |
+| `setBudget` | Client/Provider | Open | 设置预算 |
+| `fund` | Client | Open → Funded | 锁资金 |
+| `submit` | Provider | Funded → Submitted | 提交工作结果 |
+| `complete` | Evaluator | Submitted → Completed | **放款给 Provider** |
+| `reject` | Evaluator/Client | Any → Rejected | 退款给 Client |
+| `claimRefund` | Anyone | Funded/Submitted → Expired | 超时自动退款 |
+
+**关键设计要点：**
+
+- **资金安全：** 付款走的是 ERC-20 托管，只有 Evaluator 能放行，合约无权挪用
+- **超时保障：** `expiredAt` 时间到后，任何人可以触发 `claimRefund` 退款给 Client
+- **不内置纠纷：** 拒绝就是终局，链上不可逆。如果需要纠纷解决，通过 hook 系统扩展
+- **Hook 系统：** 可选的扩展接口，支持信誉同步、竞标、分账等逻辑
+- **与 x402 互补：** ERC-8183 决定钱应该给谁，x402/MPP 定义具体怎么付
+
+**参考文档：**
+- ERC-8183 提案（EIP）：https://eips.ethereum.org/EIPS/eip-8183
+- ERC-8183 讨论（Ethereum Magicians）：https://ethereum-magicians.org/t/erc-8183-agentic-commerce/27902
+- 依赖性：EIP-20（ERC-20 代币标准）
+
+---
+
+### 对比总结
+
+#### 对比 1：x402 vs MPP — 支付层
 
 | 维度 | x402 | MPP |
 |------|------|-----|
@@ -218,63 +477,69 @@ Pact 终止时：
 | **适用场景** | 纯 crypto 生态，Agent 对 DeFi/Web3 API 付费 | 传统 SaaS + crypto，Agent 对任意 API 付费 |
 | **已上线案例** | - | Browserbase、PostalForm、Stripe Climate |
 
-**一句话结论：** x402 是 crypto 原生的开放标准，MPP 是 Stripe 生态的商用方案。两者不互斥——x402 文档中明确 Stripe 也支持 x402，选哪个取决于你的服务是否已接入 Stripe。
-
-**参考文档：**
-- x402 官方文档：https://docs.x402.org/introduction
-- x402 llms.txt（完整文档索引）：https://docs.x402.org/llms.txt
-- MPP 官方文档（Stripe）：https://docs.stripe.com/payments/machine
-- MPP 介绍博客：https://stripe.com/blog/machine-payments-protocol
+**一句话结论：** x402 是 crypto 原生的开放标准，自带——只要你用 crypto 支付，x402 零费用、开放、中立。MPP 是 Stripe 生态的商用方案——如果你已经用 Stripe，接入成本极低且支持法币。
 
 ---
 
-### 对比 2：ERC-8004 vs ERC-8183 — 信任与仲裁层
-
-**ERC-8004：Trustless Agents**
-
-解决 Agent 的 **身份、发现和信任** 问题，三个链上注册表：
-
-| 注册表 | 做什么 | 具体机制 |
-|--------|--------|---------|
-| **身份注册表** | Agent 是谁 | Agent 注册为 ERC-721 NFT，URI 中声明服务端点（MCP/A2A/x402/ENS）、能力描述、联系方式 |
-| **信誉注册表** | Agent 可信吗 | 链上声誉反馈（服务质量、可用率、交易量），客户端地址过滤防女巫 |
-| **验证注册表** | 怎么验证 | 可插拔验证器（质押重执行 / zkML / TEE 可信执行环境 / 人工裁判） |
-
-信任层级按风险自动匹配——小额用声誉、大额用质押验证。
-
-**ERC-8183：Agentic Commerce（任务托管仲裁）**
-
-解决 Agent 与 Client 之间的 **执行保障和**，标准化托管合约：
-
-```
-状态机：Open → Funded → Submitted → Completed / Rejected / Expired
-
-角色：
-├─ Client（人类）    ：创建任务、锁资金、可拒绝（未执行阶段）
-├─ Provider（Agent） ：执行任务、提交结果
-└─ Evaluator（裁判） ：唯一有权验收/拒绝（可以是 Client 自己）
-```
-
-- 资金锁定在合约中，只有 Evaluator 能放行给 Provider
-- 超时自动退款（任何人可调用 `claimRefund`）
-- 不内置纠纷解决——拒绝就是终局，链上不可逆
-- 可选 hook 系统扩展：信誉同步、竞标、分账
-
-**对比：**
+#### 对比 2：ERC-8004 vs ERC-8183 — 信任与仲裁层
 
 | 维度 | ERC-8004 | ERC-8183 |
 |------|----------|----------|
 | **核心问题** | 找谁、信谁 | 怎么保障执行 |
 | **使用时机** | Agent 交互前（发现与选择） | Agent 交互中（执行与结算） |
 | **关键创新** | 可插拔验证器 + 分层信任 | 极简状态机 + Evaluator 单点仲裁 |
-| **与 x402/MPP 的关系** | 独立——Agent 需要在支付前先被找到和被信任 | 互补——ERC-8183 决定谁拿钱，x402/MPP 定义怎么付钱 |
+| **与支付协议的关系** | 独立——Agent 需要在支付前先被找到和被信任 | 互补——ERC-8183 决定谁拿钱，x402/MPP 定义怎么付钱 |
 | **链上数据** | 身份 NFT 元数据、声誉评分、验证器结果 | 任务状态、托管余额、验收结果 |
 
-**参考文档：**
-- ERC-8004 提案：https://eips.ethereum.org/EIPS/eip-8004
-- ERC-8004 讨论（Ethereum Magicians）：https://ethereum-magicians.org/t/erc-8004-trustless-agents/25098
-- ERC-8183 提案：https://eips.ethereum.org/EIPS/eip-8183
-- ERC-8183 讨论（Ethereum Magicians）：https://ethereum-magicians.org/t/erc-8183-agentic-commerce/27902
+---
+
+### 完整对照：5 个问题的最终答案
+
+结合 Part 2（x402 + CAW 设计）和以上 4 个协议的对比，补全"谁下单、谁执行、谁验收、谁付款、谁仲裁"：
+
+| 问题 | 在 DCA 场景 | 在 x402 场景 | 协议层面 |
+|------|------------|-------------|---------|
+| **谁下单？** | 人类，通过自然语言 | 人类配置 Pact + Agent 自动触发 | — |
+| **谁执行？** | Agent（在 Pact 边界内） | Agent（HTTP 请求 + 链上付款） | — |
+| **谁付款？** | Agent 通过 Cobo MPC 签名 | Agent 通过 Cobo/x402 付款 | **x402 / MPP** 定义支付协议 |
+| **谁验收？** | 人类查看 tx hash 和余额 | 人类在 Cobo App 查看 | **ERC-8183** Evaluator 验收 |
+| **谁仲裁？** | Pact 的 Policy Engine | ERC-8183 的 Evaluator | **ERC-8183** 托管仲裁 + **ERC-8004** 声誉/验证 |
+
+---
+
+### 4个协议之间的协作关系（完整架构图）
+
+```
+                         ┌─────────────────────┐
+                         │  ERC-8004 身份注册表   │  ← Agent 是谁
+                         │  Agent as NFT        │
+                         └──────────┬──────────┘
+                                    │ Agent 被找到、被信任
+                                    ▼
+                    ┌───────────────────────────┐
+                    │  ERC-8004 声誉 + 验证注册表  │  ← Agent 可信吗
+                    │  声誉评分 / zkML / TEE     │
+                    └───────────────────────────┘
+                                    │
+                     ┌──────────────┴──────────────┐
+                     │                              │
+                     ▼                              ▼
+         ┌────────────────────┐         ┌─────────────────────┐
+         │  x402 / MPP 支付    │         │  ERC-8183 任务托管   │
+         │  Agent 自动付钱     │         │  Client 锁资金       │
+         │  crypto / 法币     │         │  Evaluator 验收放行  │
+         └────────────────────┘         └─────────────────────┘
+                     │                              │
+                     └──────────┬───────────────────┘
+                                │
+                                ▼
+                     ┌────────────────────┐
+                     │  区块链结算（最终性） │
+                     │  tx hash 不可篡改   │
+                     └────────────────────┘
+```
+
+
 
 ---
 
