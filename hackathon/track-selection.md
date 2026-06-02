@@ -41,10 +41,6 @@ Cobo Hackathon 赛道聚焦 **Agentic Wallet 和 Agentic Commerce**，DCA Automa
 | 人类如何控制 Agent 权限 | 人类审核 Pact + 随时 Revoke + Policy Engine 二次保险 |
 | 如何让 Agent commerce 可审计 | Cobo get_transaction_record 提供完整执行链路 |
 
-### 3. 项目方向受 Cobo 赞助方认可
-
-在 Week 2 已经向 Cobo 提交了一个技术问题（关于 Pact Intent 字段格式），且 Cobo 的技术文档和 Workshop 内容（Module B 的 x402 + CAW 案例）直接指导了项目设计。
-
 ---
 
 ## 为什么不是 AI × Web3 Agent Tooling
