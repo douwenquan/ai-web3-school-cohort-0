@@ -34,14 +34,6 @@
 | 总交付 | 方向深挖包 + 项目 Proposal + Backlog | ✅ |
 | 竞品分析 | 18 个项目调研 | ✅ |
 
-### Week 3 — Hackathon 准备（进行中）
-
-| 类别 | 完成项 | 状态 |
-|:----:|--------|:----:|
-| 🛡️ 最低路径 | Direction Card / 赛道选择 / 组队确认 / Repo Skeleton / Sprint Plan / 一句话说明 | ✅ 全清 |
-| 📘 推荐完成 | Proposal Memo | ✅ |
-| 线上活动 | VC视角 / OpenDay / 赛道实战 / 支付场景 / AI区块链 / Week 3例会 | ✅ 全清 |
-
 ---
 
 ## 二、未完成任务
